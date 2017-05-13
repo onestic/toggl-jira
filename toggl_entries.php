@@ -90,7 +90,13 @@ class TogglCaller {
             }
 
             $day = date('Y-m-d', strtotime($entry->start));
+
+            #The day and time when the timmer sopped cointing time
+            $daytime = date('Y-m-d\TH:i:s.000O',strtotime($entry->start));
+
             $ticket = $matches[1];
+
+            #Time has to be rounded unlees it is a ONSYS ticket
 
             if (!isset($days[$day][$ticket])) {
                 $days[$day][$ticket] = 0;
@@ -111,20 +117,26 @@ class TogglCaller {
                     continue;
                 }
 
-                $spent = sprintf('%.2fh', $hours);
+                #We want to log work specifying when we started it, not when it was finished
 
-                $rows[] = compact('ticket', 'day', 'spent');
+                $daytime = date('Y-m-d\TH:i:s.000O',strtotime($entry->start) - $seconds);
+
+                $spent = sprintf('%dm', $minutes);
+
+                $rows[] = compact('ticket', 'day', 'daytime', 'spent');
             }
         }
 
         // Sort data
         $tickets = array();
         $days = array();
+        $daystime = array();
         foreach ($rows as $key => $row) {
             $tickets[$key]  = $row['ticket'];
             $days[$key] = $row['day'];
+            $daystime[$key] = $row['daytime'];
         }
-        array_multisort($tickets, SORT_ASC, $days, SORT_ASC, $rows);
+        array_multisort($tickets, SORT_ASC, $days, SORT_ASC, $daystime, SORT_ASC, $rows);
 
         // Script
         $url = $JIRA_URL . '/rest/api/2';
@@ -134,7 +146,7 @@ class TogglCaller {
 
 <?php
 $entry = new StdClass();
-$entry->started = date('Y-m-d\TH:i:s.000O', strtotime($row['day'].' 12:01 AM'));
+$entry->started = $row['daytime'];
 $entry->timeSpent = $row['spent'];
 $entry->author = new StdClass;
 $entry->author->self = $url . '/user?username=' . $JIRA_USER;
